@@ -3,6 +3,10 @@
 
 _karafuru_ is a lightweight color picker written in Python. It supports RGB and LCH color spaces.
 
+## Requirements
+
+If you'd like to run _karafuru_, you only need Python 3.5 or higher. Simply clone or download the repository and run `karafuru.py`. No third-party libraries are required at this point. Alternatively, if you're on Windows, check out the releases page for binary releases.
+
 ## What is LCH?
 
 LCH (lightness, chroma and hue) is a color space that is much broader than the classic RGB color space. While we currently lack monitors to actually display all these colors that do not exist within the RGB color space, the LCH color space also makes picking colors with uniform lightness a lot easier. This is the main reason I have created _karafuru_.
