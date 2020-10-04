@@ -15,7 +15,7 @@ LCH (lightness, chroma and hue) is a color space that is much broader than the c
 
 ## Automatic gamut correction
 
-As stated, the LCH color space is much broader than the RGB color space. That means not all of its colors can be mapped to RGB. Therefore, _karafuru_ will automatically reduce the chroma component when picking colors inside the LCH color space, so the resulting color will fit into the RGB color space. _karafuru_ will also display a warning when the current color is being corrected.
+As stated, the LCH color space is much broader than the RGB color space. That means not all of its colors can be mapped to RGB. Therefore, _karafuru_ will automatically reduce the chroma component when picking colors inside the LCH color space in such a way that the resulting color will fit into the RGB color space. _karafuru_ will also display a warning when the current color is being corrected.
 
 ## Credits
 
