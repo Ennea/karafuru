@@ -1,4 +1,5 @@
 # karafuru
+![Screenshot of karafuru](screenshot.png)
 
 _karafuru_ is a lightweight color picker written in Python. It supports RGB and LCH color spaces.
 
