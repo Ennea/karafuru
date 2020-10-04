@@ -5,7 +5,9 @@ _karafuru_ is a lightweight color picker written in Python. It supports RGB and 
 
 ## Requirements
 
-If you'd like to run _karafuru_, you only need Python 3.5 or higher. Simply clone or download the repository and run `karafuru.py`. No third-party libraries are required at this point. Alternatively, if you're on Windows, check out the releases page for binary releases.
+If you'd like to run _karafuru_, you only need Python 3.5 or higher. Simply clone or download the repository and run `karafuru.py`. No third-party libraries are required at this point. (Note: Tkinter is required, and some Linux distributions will not bundle it with the rest of the Python standard libary. For example, on Debian, the required package is called `python3-tk`.)
+
+Alternatively, if you're on Windows, check out the releases page for binary releases.
 
 ## What is LCH?
 
