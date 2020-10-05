@@ -21,7 +21,7 @@ class Karafuru(tk.Frame):
         super().__init__(master, name='karafuru')
 
         master.title('karafuru')
-        master.iconbitmap('icon.ico')
+        master.iconphoto(False, tk.PhotoImage(file='icon.png'))
         master.resizable(False, False)
         self.master = master
         self.grid(padx=5, pady=5)
