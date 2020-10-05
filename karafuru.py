@@ -1,5 +1,7 @@
 import math
+import os
 import re
+import sys
 import tkinter as tk
 
 from lch import lch_to_srgb, srgb_to_lch
@@ -21,7 +23,7 @@ class Karafuru(tk.Frame):
         super().__init__(master, name='karafuru')
 
         master.title('karafuru')
-        master.iconphoto(False, tk.PhotoImage(file='icon.png'))
+        master.iconphoto(False, tk.PhotoImage(file=os.path.join(os.path.dirname(sys.argv[0]), 'icon.png')))
         master.resizable(False, False)
         self.master = master
         self.grid(padx=5, pady=5)
