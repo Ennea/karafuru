@@ -1,16 +1,20 @@
+import ctypes
+from functools import partial
 import math
 import os
 import re
 import sys
 import tkinter as tk
+from tkinter import ttk
 
 from lch import lch_to_srgb, srgb_to_lch
+from PIL import Image, ImageTk, ImageGrab
 
 
 class Karafuru(tk.Frame):
     _variables = {}
     _int_regex = re.compile(r'^$|^\d+$')
-    _float_regex = re.compile(r'^$|^\d+\.?\d?$')  # TODO: how to express \.?\d? in such a way that if \d exists, \. also has to?
+    _float_regex = re.compile(r'^$|^\d+\.?\d?$')
     _hex_regex = re.compile(r'^$|^#[\da-fA-F]{,6}$')
     _hex_strict_regex = re.compile(r'^#([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})$')
 
@@ -18,12 +22,17 @@ class Karafuru(tk.Frame):
 
     _color_preview = None
     _color_preview_frame = None
+    _picker_preview = None
+    _picker_preview_frame = None
+    _picker_button = None
 
     def __init__(self, master=None):
         super().__init__(master, name='karafuru')
 
         master.title('karafuru')
-        master.iconphoto(False, tk.PhotoImage(file=os.path.join(os.path.dirname(sys.argv[0]), 'icon.png')))
+        master.iconphoto(False, tk.PhotoImage(file=os.path.join(os.path.dirname(sys.argv[0]), 'icon16.png')),
+                         tk.PhotoImage(file=os.path.join(os.path.dirname(sys.argv[0]), 'icon.png')),
+                         tk.PhotoImage(file=os.path.join(os.path.dirname(sys.argv[0]), 'icon256.png')))
         master.resizable(False, False)
         self.master = master
         self.grid(padx=5, pady=5)
@@ -201,6 +210,30 @@ class Karafuru(tk.Frame):
 
         return True
 
+    # color picker event handlers
+    def _handle_picker_move(self, event):
+        x = event.x + self._picker_button.winfo_rootx()
+        y = event.y + self._picker_button.winfo_rooty()
+        # image = ImageGrab.grab(bbox=(x - 12, y - 12, x + 13, y + 13), all_screens=True)
+        image = ImageGrab.grab(bbox=(x - 7, y - 7, x + 8, y + 8), all_screens=True)
+        image = image.resize((75, 75), resample=Image.NEAREST)
+        self._picker_preview.original_image = image
+        self._picker_preview.image = ImageTk.PhotoImage(image)
+        self._picker_preview.config(image=self._picker_preview.image)
+
+        (red, green, blue) = image.getpixel((37, 37))
+        self._set_variable_value('red', red)
+        self._set_variable_value('green', green)
+        self._set_variable_value('blue', blue)
+
+    def _handle_preview_click(self, event):
+        x = max(0, min(74, event.x))
+        y = max(0, min(74, event.y))
+        (red, green, blue) = self._picker_preview.original_image.getpixel((x, y))
+        self._set_variable_value('red', red)
+        self._set_variable_value('green', green)
+        self._set_variable_value('blue', blue)
+
     # initialization methods
     def _create_variables(self):
         self._variables['hex'] = tk.StringVar()
@@ -215,30 +248,64 @@ class Karafuru(tk.Frame):
         self._variables['hue'].upper_limit = 360
 
     def _create_widgets(self):
-        # spacers
-        tk.Frame(self, width=10).grid(column=1, rowspan=4)
-        tk.Frame(self, height=5).grid(row=3, columnspan=5)
+        # validation helper function
+        validate = self.register(lambda entry, value: self._validate_entry(entry, value))
 
-        # the color preview
-        self._color_preview_frame = tk.Frame(self, bg='#808080', padx=5, pady=5)
-        self._color_preview_frame.grid(row=0, column=0, rowspan=3)
+        # base layout
+        frame_left = tk.Frame(self)
+        frame_left.grid(row=0, column=0)
+        frame_right = tk.Frame(self)
+        frame_right.grid(row=0, column=1)
+        tk.Frame(frame_right, width=10).grid(row=0, column=0)
+
+        # color preview
+        self._color_preview_frame = tk.Frame(frame_left, bg='#808080', padx=5, pady=5)
+        self._color_preview_frame.pack()
         self._color_preview = tk.Frame(self._color_preview_frame, bg='#000', width=75, height=75)
-        self._color_preview.grid()
+        self._color_preview.pack()
+
+        params = {
+            'validate': 'key',
+            'validatecommand': (validate, '%W', '%P'),
+
+            'relief': tk.FLAT,
+            'borderwidth': 1,
+            'highlightbackground': '#a0a0a0',
+            'highlightcolor': '#606060',
+            'highlightthickness': 1
+        }
+        tk.Entry(frame_left, width=10, name='entry_hex', textvariable=self._variables['hex'], **params).pack(pady=5)
+
+        # color picker preview
+        self._picker_preview_frame = tk.Frame(frame_left, bg='#000', padx=1, pady=1)
+        self._picker_preview_frame.pack(pady=5)
+        self._picker_preview = tk.Label(self._picker_preview_frame, borderwidth=0)
+        self._picker_preview.original_image = Image.new('RGB', (75, 75), 0x808080)
+        self._picker_preview.image = ImageTk.PhotoImage(self._picker_preview.original_image)
+        self._picker_preview.config(image=self._picker_preview.image)
+        self._picker_preview.pack()
+        self._picker_preview.bind('<Button-1>', partial(self._handle_preview_click))
+        self._picker_preview.bind('<B1-Motion>', partial(self._handle_preview_click))
+
+        # color picker button
+        self._picker_button = ttk.Button(self, text='Pick color')
+        self._picker_button.grid(row=10, column=0)
+        self._picker_button.bind('<Button-1>', partial(self._handle_picker_move))
+        self._picker_button.bind('<B1-Motion>', partial(self._handle_picker_move))
 
         # labels
-        tk.Label(self, text='Red').grid(sticky=tk.W, row=0, column=2)
-        tk.Label(self, text='Green').grid(sticky=tk.W, row=1, column=2)
-        tk.Label(self, text='Blue').grid(sticky=tk.W, row=2, column=2)
-        tk.Label(self, text='Lightness').grid(sticky=tk.W, row=5, column=2)
-        tk.Label(self, text='Chroma').grid(sticky=tk.W, row=6, column=2)
-        tk.Label(self, text='Hue').grid(sticky=tk.W, row=7, column=2)
+        tk.Label(frame_right, text='Red').grid(sticky=tk.W, row=0, column=1)
+        tk.Label(frame_right, text='Green').grid(sticky=tk.W, row=1, column=1)
+        tk.Label(frame_right, text='Blue').grid(sticky=tk.W, row=2, column=1)
+        tk.Label(frame_right, text='Lightness').grid(sticky=tk.W, row=4, column=1)
+        tk.Label(frame_right, text='Chroma').grid(sticky=tk.W, row=5, column=1)
+        tk.Label(frame_right, text='Hue').grid(sticky=tk.W, row=6, column=1)
 
-        self._warning = tk.Label(self, text='', fg='#e04e39')
-        self._warning.grid(row=4, column=2, columnspan=3, sticky=tk.E)
+        self._warning = tk.Label(frame_right, text='', fg='#e04e39')
+        self._warning.grid(row=3, column=1, columnspan=3, sticky=tk.E)
 
         # inputs
-        validate = self.register(lambda entry, value: self._validate_entry(entry, value))
-        defaults = {
+        params = {
             'validate': 'key',
             'validatecommand': (validate, '%W', '%P'),
 
@@ -250,18 +317,15 @@ class Karafuru(tk.Frame):
             'highlightthickness': 1
         }
 
-        tk.Entry(self, width=5, name='entry_red', textvariable=self._variables['red'], **defaults).grid(row=0, column=3, pady=3.5)
-        tk.Entry(self, width=5, name='entry_green', textvariable=self._variables['green'], **defaults).grid(row=1, column=3, pady=3.5)
-        tk.Entry(self, width=5, name='entry_blue', textvariable=self._variables['blue'], **defaults).grid(row=2, column=3, pady=3.5)
-        tk.Entry(self, width=5, name='entry_lightness', textvariable=self._variables['lightness'], **defaults).grid(row=5, column=3, pady=3.5)
-        tk.Entry(self, width=5, name='entry_chroma', textvariable=self._variables['chroma'], **defaults).grid(row=6, column=3, pady=3.5)
-        tk.Entry(self, width=5, name='entry_hue', textvariable=self._variables['hue'], **defaults).grid(row=7, column=3, pady=3.5)
-
-        del defaults['justify']
-        tk.Entry(self, width=10, name='entry_hex', textvariable=self._variables['hex'], **defaults).grid(row=4, column=0)
+        tk.Entry(frame_right, width=5, name='entry_red', textvariable=self._variables['red'], **params).grid(row=0, column=2, padx=10, pady=3.5)
+        tk.Entry(frame_right, width=5, name='entry_green', textvariable=self._variables['green'], **params).grid(row=1, column=2, padx=10, pady=3.5)
+        tk.Entry(frame_right, width=5, name='entry_blue', textvariable=self._variables['blue'], **params).grid(row=2, column=2, padx=10, pady=3.5)
+        tk.Entry(frame_right, width=5, name='entry_lightness', textvariable=self._variables['lightness'], **params).grid(row=4, column=2, padx=10, pady=3.5)
+        tk.Entry(frame_right, width=5, name='entry_chroma', textvariable=self._variables['chroma'], **params).grid(row=5, column=2, padx=10, pady=3.5)
+        tk.Entry(frame_right, width=5, name='entry_hue', textvariable=self._variables['hue'], **params).grid(row=6, column=2, padx=10, pady=3.5)
 
         # sliders
-        defaults = {
+        params = {
             'from_': 0,
             'orient': tk.HORIZONTAL,
             'length': 300,
@@ -280,13 +344,19 @@ class Karafuru(tk.Frame):
             'activebackground': '#f0f0f0'
         }
 
-        tk.Scale(self, to=255, variable=self._variables['red'], **defaults).grid(row=0, column=4)
-        tk.Scale(self, to=255, variable=self._variables['green'], **defaults).grid(row=1, column=4)
-        tk.Scale(self, to=255, variable=self._variables['blue'], **defaults).grid(row=2, column=4)
-        tk.Scale(self, to=100, resolution=0.1, variable=self._variables['lightness'], **defaults).grid(row=5, column=4)
-        tk.Scale(self, to=132, resolution=0.1, variable=self._variables['chroma'], **defaults).grid(row=6, column=4)
-        tk.Scale(self, to=360, resolution=0.1, variable=self._variables['hue'], **defaults).grid(row=7, column=4)
+        tk.Scale(frame_right, to=255, variable=self._variables['red'], **params).grid(row=0, column=3)
+        tk.Scale(frame_right, to=255, variable=self._variables['green'], **params).grid(row=1, column=3)
+        tk.Scale(frame_right, to=255, variable=self._variables['blue'], **params).grid(row=2, column=3)
+        tk.Scale(frame_right, to=100, resolution=0.1, variable=self._variables['lightness'], **params).grid(row=4, column=3)
+        tk.Scale(frame_right, to=132, resolution=0.1, variable=self._variables['chroma'], **params).grid(row=5, column=3)
+        tk.Scale(frame_right, to=360, resolution=0.1, variable=self._variables['hue'], **params).grid(row=6, column=3)
 
+
+# on windows, set our own app id to ensure the task bar renders our icon instead of python's
+if sys.platform == 'win32':
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('ennea.karafuru')
+    # https://stackoverflow.com/questions/36514158/tkinter-output-blurry-for-icon-and-text-python-2-7
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
 
 root = tk.Tk()
 app = Karafuru(master=root)
